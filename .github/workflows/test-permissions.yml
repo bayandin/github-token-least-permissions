@@ -84,33 +84,33 @@ jobs:
           BRANCH: ${{ needs.push-git-branch.outputs.branch }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  close-pull-request:
-    needs: [ push-git-branch, create-pull-request ]
+  # close-pull-request:
+  #   needs: [ push-git-branch, create-pull-request ]
 
-    runs-on: ubuntu-latest
+  #   runs-on: ubuntu-latest
 
-    permissions:
-      pull-requests: write
+  #   permissions:
+  #     pull-requests: write
 
-    steps:
-      - run: |
-          gh pr --repo "${GITHUB_REPOSITORY}" close ${BRANCH}
-        env:
-          BRANCH: ${{ needs.push-git-branch.outputs.branch }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #   steps:
+  #     - run: |
+  #         gh pr --repo "${GITHUB_REPOSITORY}" close ${BRANCH}
+  #       env:
+  #         BRANCH: ${{ needs.push-git-branch.outputs.branch }}
+  #         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  delete-branch:
-    needs: [ push-git-branch, close-pull-request ]
+  # delete-branch:
+  #   needs: [ push-git-branch, close-pull-request ]
 
-    runs-on: ubuntu-latest
+  #   runs-on: ubuntu-latest
 
-    permissions:
-      contents: write
+  #   permissions:
+  #     contents: write
 
-    steps:
-      - uses: actions/checkout@v4
-      - run: |
-          git push origin --delete ${BRANCH}
-        env:
-          BRANCH: ${{ needs.push-git-branch.outputs.branch }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - run: |
+  #         git push origin --delete ${BRANCH}
+  #       env:
+  #         BRANCH: ${{ needs.push-git-branch.outputs.branch }}
+  #         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
