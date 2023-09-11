@@ -1,0 +1,116 @@
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  add-label-to-pr:
+    runs-on: ubuntu-latest
+
+    concurrency:
+      group: example-label
+
+    permissions:
+      pull-requests: write
+
+    steps:
+      - run: |
+          gh pr --repo "${GITHUB_REPOSITORY}" edit "1" --add-label "example-label"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  remove-label-from-pr:
+    needs: [ add-label-to-pr ]
+    if: needs.add-label-to-pr.result == 'success'
+
+    concurrency:
+      group: example-label
+
+    permissions:
+      pull-requests: write
+
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          gh pr --repo "${GITHUB_REPOSITORY}" edit "1" --remove-label "example-label"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  push-git-branch:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    outputs:
+      branch: ${{ steps.push-git-branch.outputs.branch }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - id: push-git-branch
+        run: |
+          BRANCH="test-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          echo "branch=${BRANCH}" >> $GITHUB_OUTPUT
+
+          git config --global user.email "you@example.com"
+          git config --global user.name "Your Name"
+
+          touch test.txt
+
+          git checkout -b ${BRANCH}
+          git add test.txt
+          git commit -m "test"
+
+          git push -u origin ${BRANCH}
+
+  create-pull-request:
+    needs: [ push-git-branch ]
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      pull-requests: write
+      # In addition, in UI: "Allow GitHub Actions to create and approve pull requests"
+      # Ref https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#preventing-github-actions-from-creating-or-approving-pull-requests
+
+    steps:
+      - run: |
+          gh pr --repo "${GITHUB_REPOSITORY}" create -t "test" -b "test" -H ${BRANCH}
+        env:
+          BRANCH: ${{ needs.push-git-branch.outputs.branch }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # close-pull-request:
+  #   needs: [ push-git-branch, create-pull-request ]
+
+  #   runs-on: ubuntu-latest
+
+  #   permissions:
+  #     pull-requests: write
+
+  #   steps:
+  #     - run: |
+  #         gh pr --repo "${GITHUB_REPOSITORY}" close ${BRANCH}
+  #       env:
+  #         BRANCH: ${{ needs.push-git-branch.outputs.branch }}
+  #         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  delete-branch:
+    needs: [ push-git-branch, create-pull-request ]
+
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          git push origin --delete ${BRANCH}
+        env:
+          BRANCH: ${{ needs.push-git-branch.outputs.branch }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
